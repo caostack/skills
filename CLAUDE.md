@@ -473,7 +473,7 @@ plugins/<plugin-name>/
   "plugins": [
     {
       "name": "my-plugin",
-      "source": "my-plugin",
+      "source": "./plugins/my-plugin",
       "description": "插件描述",
       "version": "1.0.0"
     }
