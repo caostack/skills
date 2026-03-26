@@ -3,77 +3,79 @@ name: feature-explorer
 description: >-
   This skill should be used when the user asks to "explain how X works",
   "how does X work", "what is the implementation of X", "trace the code for X",
-  "show me the call chain of X", "how is X implemented", or mentions understanding
-  a feature, function, module, or mechanism in a codebase. Provides a structured
-  analysis of how a feature is implemented. Do NOT use for debugging, bug fixing,
-  or modifying code — only for understanding and explaining.
-argument-hint: "[feature/function/module name]"
+  "show me the call chain of X", "how is X implemented", "how does the X module
+  work", "what's the design of X", "walk me through X", or mentions understanding,
+  analyzing, or exploring a feature, function, module, mechanism, or design in a
+  codebase. Also triggers when the user asks about the architecture, flow, or
+  internal workings of a component. Provides a structured analysis of how a feature
+  is implemented. Do NOT use for debugging, bug fixing, or modifying code — only
+  for understanding and explaining.
+argument-hint: "[name of the feature/module to explore, e.g. login flow, payment module]"
 context: fork
 agent: Explore
 ---
 
 ## Objective
 
-深入分析代码仓库中指定功能的实现原理，输出结构化的功能解析报告。
+Analyze the implementation of a specified feature in a codebase and produce a structured exploration report.
 
-## 目标
+## Target
 
 $ARGUMENTS
 
-## 探索流程
+## Exploration Process
 
-### Phase 1: 定位入口
+### Phase 1: Locate Entry Points
 
-1. 根据目标关键词，使用 Glob 和 Grep 搜索相关的文件、函数、类
-2. 识别入口点：API 端点、CLI 命令、事件监听器、导出函数等
-3. 如果目标不明确（如"登录功能"），先列出候选入口，选择最相关的
+1. Use Glob and Grep to search for relevant files, functions, and classes based on the target keyword.
+2. Identify entry points: API endpoints, CLI commands, event listeners, exported functions, etc.
+3. If the target is ambiguous (e.g. "the auth system"), list candidate entry points and pick the most relevant one.
 
-### Phase 2: 追踪调用链
+### Phase 2: Trace the Call Chain
 
-从入口出发，逐层追踪函数调用：
-- 记录每个关键函数的 **文件路径:行号**
-- 标注函数职责（一句话说明这个函数做什么）
-- 识别分支路径（条件判断导致的分流）
-- 追踪到叶子节点（底层库调用、数据存储操作等）
+Starting from the entry point, trace function calls layer by layer:
+- Record each key function with **file_path:line_number**
+- Summarize what each function does in one sentence
+- Identify branching paths (conditional logic that splits execution)
+- Stop at the project's own code boundary — when a call enters a third-party library or framework, note the boundary and move on. Do not trace into library internals.
+- Keep the call chain to a maximum of 7 levels deep. Fold deeper nesting into "...".
 
-### Phase 3: 梳理数据流
+### Phase 3: Map Data Flow
 
-- 数据从哪里来（用户输入、数据库、配置、外部 API）
-- 数据如何被转换和处理
-- 数据最终到哪里去（返回响应、写入存储、触发副作用）
+- Where data comes from (user input, database, config, external API)
+- How data is transformed and processed
+- Where data ultimately goes (response, storage, side effects)
 
-### Phase 4: 识别关键设计
+### Phase 4: Identify Key Design Decisions
 
-- 使用的设计模式
-- 重要的抽象和接口
-- 错误处理策略
-- 并发/异步处理（如有）
+- Design patterns in use
+- Important abstractions and interfaces
+- Error handling strategy
+- Concurrency/async handling (if applicable)
 
-## 输出格式
+## Output Format
 
-使用以下结构输出报告：
+Use this structure for the report:
 
 ```
-## 功能概述
-<用 2-3 句话概括这个功能做什么、为什么存在>
+## Overview
+<2-3 sentences summarizing what this feature does and why it exists>
 
-## 调用链
-<用缩进或箭头展示调用关系，标注文件路径和行号>
+## Call Chain
+<Show call relationships with indentation or arrows, annotated with file paths and line numbers>
 
-## 数据流
-<描述数据的来源、转换、去向>
+## Data Flow
+<Describe data sources, transformations, and destinations>
 
-## 关键设计点
-<列出重要的设计决策和模式>
+## Key Design Decisions
+<List important design choices and patterns>
 
-## 涉及文件
-<列出所有关键文件的路径>
+## Files
+<Bulleted list of all key file paths (no line numbers — see call chain for those)>
 ```
 
-## 约束
+## Constraints
 
-- 只读探索，不修改任何文件
-- 每个关键引用必须包含 `文件路径:行号`
-- 优先展示核心路径，省略不重要的中间步骤
-- 如果代码库过大或功能过于复杂，聚焦最核心的 happy path
-- 中文输出报告
+- Read-only exploration — do not modify any files.
+- Every key reference must include `file_path:line_number`.
+- Focus on the core happy path. If the feature is complex, prioritize the primary flow over edge cases.
