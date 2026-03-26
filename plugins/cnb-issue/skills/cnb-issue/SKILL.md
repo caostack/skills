@@ -16,7 +16,7 @@ argument-hint: "[owner/repo] [action]"
 
 操作 CNB 平台 (https://cnb.cool) 上的 Issue。所有命令通过 `scripts/cnb-client.js` 执行。
 
-下文示例中 `$SCRIPT` 为 `$CLAUDE_PLUGIN_ROOT/skills/cnb-issue/scripts/cnb-client.js` 的简写。
+下文示例中 `$SCRIPT` 为 `$CLAUDE_PLUGIN_ROOT/skills/cnb-issue/scripts/client.js` 的简写。
 
 ## 前提条件
 
