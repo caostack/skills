@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PLUGINS_DIR/ruff-format/scripts/ruff-format.sh\" \"$TOOL_INPUT_FILE_PATH\""
+          }
+        ]
+      }
+    ]
+  }
+}

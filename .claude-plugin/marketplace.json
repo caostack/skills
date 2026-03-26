@@ -21,8 +21,8 @@
       "version": "1.0.0"
     },
     {
-      "name": "ruff-auto-format",
-      "source": "./plugins/ruff-auto-format",
+      "name": "ruff-format",
+      "source": "./plugins/ruff-format",
       "description": "在修改 Python 文件后自动执行 ruff format 和 ruff check --fix",
       "version": "1.0.0"
     },
