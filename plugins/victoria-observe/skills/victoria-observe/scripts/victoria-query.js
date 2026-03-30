@@ -5,10 +5,6 @@ const http = require('http');
 const https = require('https');
 const url = require('url');
 
-// ---------------------------------------------------------------------------
-// Argument parsing
-// ---------------------------------------------------------------------------
-
 function parseArgs(argv) {
   const positional = [];
   const flags = {};
@@ -33,10 +29,6 @@ function parseArgs(argv) {
   return { positional, flags };
 }
 
-// ---------------------------------------------------------------------------
-// Time helpers
-// ---------------------------------------------------------------------------
-
 function parseRelativeTime(input) {
   const match = String(input).match(/^(\d+(?:\.\d+)?)(s|m|h|d|w)$/);
   if (!match) return null;
@@ -57,53 +49,50 @@ function parseTime(input) {
   throw new Error(`Cannot parse time: ${input}`);
 }
 
-function formatTimestamp(unixSec) {
-  return new Date(unixSec * 1000).toISOString();
-}
-
-// ---------------------------------------------------------------------------
-// Auth helper
-// ---------------------------------------------------------------------------
-
 function getAuthHeaders() {
   const token = process.env.VICTORIA_AUTH_TOKEN;
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// ---------------------------------------------------------------------------
-// HTTP request helper (zero dependencies)
-// ---------------------------------------------------------------------------
+function formEncode(params) {
+  return Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+}
+
+function httpModule(targetUrl) {
+  return new url.URL(targetUrl).protocol === 'https:' ? https : http;
+}
+
+function collectBody(res) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    res.on('data', (chunk) => chunks.push(chunk));
+    res.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+  });
+}
 
 function httpRequest(targetUrl) {
   return new Promise((resolve, reject) => {
-    const parsed = new url.URL(targetUrl);
-    const mod = parsed.protocol === 'https:' ? https : http;
-    const req = mod.get(targetUrl, { timeout: 30000, headers: getAuthHeaders() }, (res) => {
-      const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => {
-        const body = Buffer.concat(chunks).toString('utf-8');
-        if (res.statusCode >= 400) {
-          reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 500)}`));
-        } else {
-          resolve(body);
-        }
-      });
+    const req = httpModule(targetUrl).get(targetUrl, { timeout: 30000, headers: getAuthHeaders() }, async (res) => {
+      const body = await collectBody(res);
+      if (res.statusCode >= 400) {
+        reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 500)}`));
+      } else {
+        resolve(body);
+      }
     });
     req.on('error', reject);
     req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
   });
 }
 
-// HTTP POST for metrics queries — avoids URL length limits with complex MetricsQL
+// POST avoids URL length limits with complex MetricsQL
 function httpPost(targetUrl, formParams) {
   return new Promise((resolve, reject) => {
-    const bodyStr = Object.entries(formParams)
-      .filter(([, v]) => v !== undefined && v !== null && v !== '')
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-      .join('&');
-    const parsed = new url.URL(targetUrl);
-    const mod = parsed.protocol === 'https:' ? https : http;
+    const bodyStr = formEncode(formParams);
+    const mod = httpModule(targetUrl);
     const options = {
       method: 'POST',
       headers: {
@@ -113,17 +102,13 @@ function httpPost(targetUrl, formParams) {
       },
       timeout: 30000,
     };
-    const req = mod.request(targetUrl, options, (res) => {
-      const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => {
-        const body = Buffer.concat(chunks).toString('utf-8');
-        if (res.statusCode >= 400) {
-          reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 500)}`));
-        } else {
-          resolve(body);
-        }
-      });
+    const req = mod.request(targetUrl, options, async (res) => {
+      const body = await collectBody(res);
+      if (res.statusCode >= 400) {
+        reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 500)}`));
+      } else {
+        resolve(body);
+      }
     });
     req.on('error', reject);
     req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
@@ -132,30 +117,28 @@ function httpPost(targetUrl, formParams) {
   });
 }
 
-// Streaming HTTP request for tail - keeps connection open, calls onLine for each NDJSON line
 function httpStream(targetUrl, onLine, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const parsed = new url.URL(targetUrl);
-    const mod = parsed.protocol === 'https:' ? https : http;
     let settled = false;
+    let timer;
     const cleanup = () => {
       if (settled) return;
       settled = true;
+      if (timer) clearTimeout(timer);
+      process.removeListener('SIGINT', cleanup);
       req.destroy();
       resolve();
     };
-    const req = mod.get(targetUrl, { timeout: 0, headers: getAuthHeaders() }, (res) => {
+    const req = httpModule(targetUrl).get(targetUrl, { timeout: 0, headers: getAuthHeaders() }, (res) => {
       if (res.statusCode >= 400) {
-        const chunks = [];
-        res.on('data', (c) => chunks.push(c));
-        res.on('end', () => reject(new Error(`HTTP ${res.statusCode}: ${Buffer.concat(chunks).toString('utf-8').slice(0, 500)}`)));
+        collectBody(res).then((body) => reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 500)}`)));
         return;
       }
       let buffer = '';
       res.on('data', (chunk) => {
         buffer += chunk.toString('utf-8');
         const lines = buffer.split('\n');
-        buffer = lines.pop(); // keep incomplete line
+        buffer = lines.pop();
         for (const line of lines) {
           if (line.trim()) onLine(line);
         }
@@ -166,21 +149,15 @@ function httpStream(targetUrl, onLine, timeoutMs) {
       });
     });
     req.on('error', reject);
-    // Cross-platform exit handling
-    process.once('SIGINT', cleanup);
     // stdin close fires when parent kills child process (works on Windows)
+    process.on('SIGINT', cleanup);
     if (process.stdin.isTTY === undefined || !process.stdin.isTTY) {
       process.stdin.resume();
       process.stdin.once('end', cleanup);
     }
-    // Timeout auto-stop
-    if (timeoutMs > 0) setTimeout(cleanup, timeoutMs);
+    if (timeoutMs > 0) timer = setTimeout(cleanup, timeoutMs);
   });
 }
-
-// ---------------------------------------------------------------------------
-// URL builder
-// ---------------------------------------------------------------------------
 
 function buildBaseUrl(envVar) {
   let base = process.env[envVar];
@@ -193,17 +170,10 @@ function buildBaseUrl(envVar) {
 }
 
 function buildUrl(base, path, params) {
-  const qs = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== null && v !== '')
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-    .join('&');
+  const qs = formEncode(params);
   const separator = base.endsWith('/') ? '' : '/';
   return qs ? `${base}${separator}${path}?${qs}` : `${base}${separator}${path}`;
 }
-
-// ---------------------------------------------------------------------------
-// Output formatting
-// ---------------------------------------------------------------------------
 
 function outputJson(data, raw) {
   if (raw) {
@@ -248,33 +218,25 @@ function formatLogsResponse(body, raw) {
   console.log(JSON.stringify(logs, null, 2));
 }
 
-// ---------------------------------------------------------------------------
-// Trace output formatting
-// ---------------------------------------------------------------------------
-
 function formatTraceCompact(trace) {
   const spans = trace.spans || [];
   const processes = trace.processes || {};
-  const spanCount = spans.length;
 
-  // Find root span (no CHILD_OF reference)
   const rootSpan = spans.find((s) =>
     !(s.references || []).some((r) => r.refType === 'CHILD_OF')
   ) || spans[0];
 
-  // Collect service names
   const services = [...new Set(
     spans.map((s) => processes[s.processID]?.serviceName).filter(Boolean)
   )];
 
-  // Count errors
   const errorCount = spans.filter((s) =>
     (s.tags || []).some((t) => t.key === 'error' && t.value !== 'unset' && t.value !== 'false')
   ).length;
 
   const result = {
     traceID: trace.traceID,
-    spans: spanCount,
+    spans: spans.length,
     duration: rootSpan ? formatDuration(rootSpan.duration) : '?',
     rootOperation: rootSpan?.operationName || '?',
     services,
@@ -320,10 +282,6 @@ function outputTraces(data, verbose) {
     }, null, 2));
   }
 }
-
-// ---------------------------------------------------------------------------
-// Metrics commands
-// ---------------------------------------------------------------------------
 
 async function cmdMetricsQuery(positional, flags) {
   const query = positional[0];
@@ -407,10 +365,6 @@ async function cmdMetricsExport(positional, flags) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Logs commands
-// ---------------------------------------------------------------------------
-
 async function cmdLogsQuery(positional, flags) {
   const query = positional[0];
   if (!query) throw new Error('Usage: logs query <LogsQL expression>');
@@ -493,15 +447,12 @@ async function cmdLogsTail(positional, flags) {
       const time = entry._time || '';
       const level = entry.severity || entry.level || '';
       const prefix = level ? `[${level}] ` : '';
-      // Compact one-line output for tail
       console.log(`${time} ${prefix}${msg}`);
     } catch {
       console.log(line);
     }
   }, timeoutSec * 1000);
 }
-
-// ---------------------------------------------------------------------------
 
 async function cmdTracesServices(positional, flags) {
   const base = buildBaseUrl('VICTORIA_TRACES_URL');
@@ -561,10 +512,6 @@ async function cmdTracesDependencies(positional, flags) {
   const body = await httpRequest(u);
   outputJson(JSON.parse(body), flags.raw);
 }
-
-// ---------------------------------------------------------------------------
-// Command routing
-// ---------------------------------------------------------------------------
 
 const COMMANDS = {
   metrics: {
@@ -656,7 +603,7 @@ async function main() {
 
   const serviceCommands = COMMANDS[service];
   if (!serviceCommands) {
-    console.error(`Error: Unknown service "${service}". Use: metrics, logs, traces`);
+    console.error(`Error: Unknown service "${service}". Use: ${Object.keys(COMMANDS).join(', ')}`);
     process.exit(1);
   }
 
@@ -670,7 +617,7 @@ async function main() {
   try {
     await cmd(positional.slice(2), flags);
   } catch (err) {
-    console.error(`Error: ${err.message}`);
+    console.error(err.message);
     process.exit(1);
   }
 }
