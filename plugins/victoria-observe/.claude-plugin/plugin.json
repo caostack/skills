@@ -1,0 +1,6 @@
+{
+  "name": "victoria-observe",
+  "version": "1.0.0",
+  "description": "查询和分析 VictoriaMetrics、VictoriaLogs、VictoriaTraces 的可观测性数据",
+  "skills": "./skills/"
+}

@@ -31,6 +31,12 @@
       "source": "./plugins/team-planner",
       "description": "根据需求调研代码仓库现状，设计多 Agent 团队方案（角色、任务、依赖、执行顺序）",
       "version": "1.0.0"
+    },
+    {
+      "name": "victoria-observe",
+      "source": "./plugins/victoria-observe",
+      "description": "查询和分析 VictoriaMetrics、VictoriaLogs、VictoriaTraces 的可观测性数据，支持指标查询、日志搜索和分布式链路追踪",
+      "version": "1.0.0"
     }
   ]
 }
