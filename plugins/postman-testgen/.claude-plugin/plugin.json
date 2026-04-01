@@ -5,6 +5,5 @@
   "author": {
     "name": "qingshan"
   },
-  "skills": "./skills/",
-  "agents": "./agents/"
+  "skills": "./skills/"
 }
