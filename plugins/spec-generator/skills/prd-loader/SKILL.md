@@ -3,6 +3,7 @@ name: prd-loader
 description: >
   内部步骤（Task 1），由 spec-generator 编排器调用，不从用户直接触发。
   判断 PRD 输入来源（文件路径、内联文本）并加载内容到工作目录。
+user-invocable: false
 context: fork
 allowed-tools:
   - Read
