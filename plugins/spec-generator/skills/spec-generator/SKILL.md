@@ -5,7 +5,7 @@ description: >
   "从 PRD 生成实现方案", "生成 spec", "写一个实现规格", "create implementation spec",
   "准备 PRD 给 agent 执行", 或执行 /spec-generator 命令时使用。
   将产品需求文档（PRD）转化为精确的、编码 Agent 可直接执行的实现规格文档。
-argument-hint: "<PRD 来源：文件路径 | 飞书文档 URL | 文本内容>"
+argument-hint: "<PRD 来源：文件路径 | 文本内容>"
 allowed-tools:
   - Read
   - Write
@@ -33,7 +33,7 @@ allowed-tools:
 
 ### 初始化
 
-1. 解析用户输入，确定 PRD 来源（文件路径 / 飞书 URL / 内联文本）
+1. 解析用户输入，确定 PRD 来源（文件路径 / 内联文本）
 2. 从 PRD 来源中提取 `{feature-name}`（从文件名、PRD 标题或用户指定获取）
 3. 使用 Bash 工具生成 6 位随机字符：`openssl rand -hex 3`
 4. 创建工作目录：`mkdir -p specs/{feature-name}-spec-{随机字符}/`
@@ -41,8 +41,8 @@ allowed-tools:
 6. 将 PRD 来源信息写入 `{workspace}/.input.md`：
    ```markdown
    ---
-   source-type: file-path | lark-url | inline-text
-   source-ref: <文件路径 | URL | inline>
+   source-type: file-path | inline-text
+   source-ref: <文件路径 | inline>
    feature-name: <功能名称>
    ---
    <如果是内联文本，PRD 内容写在此处；否则留空>
@@ -123,4 +123,3 @@ allowed-tools:
 - **`spec-creator`** — 规格文档生成执行流程和规范
 - **`spec-reviewer`** — 规格文档质量审查执行流程和规范
 - **`spec-deliverer`** — 输出交付执行流程和规范
-- **`lark-doc`** skill（可选）— 飞书文档集成，用于 PRD 输入和 spec 输出

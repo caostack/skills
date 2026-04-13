@@ -2,7 +2,7 @@
 name: prd-loader
 description: >
   内部步骤（Task 1），由 spec-generator 编排器调用，不从用户直接触发。
-  判断 PRD 输入来源（文件路径、飞书 URL、内联文本）并加载内容到工作目录。
+  判断 PRD 输入来源（文件路径、内联文本）并加载内容到工作目录。
 context: fork
 allowed-tools:
   - Read
@@ -28,7 +28,7 @@ allowed-tools:
 
 ```markdown
 ---
-source-type: file-path | lark-url | inline-text
+source-type: file-path | inline-text
 source-ref: <文件路径 | URL | inline>
 feature-name: <功能名称>
 ---
@@ -43,12 +43,7 @@ feature-name: <功能名称>
    - 使用 Read 工具读取 `source-ref` 指定的文件内容
    - 如果文件不存在，使用 AskUserQuestion 请求用户提供正确路径
 
-2. **飞书文档 URL**（`lark-url`）— 匹配 `https://*.larkoffice.com/docx/*` 或 `https://*.feishu.cn/docx/*`
-   - 如果 `lark-doc` skill 未安装，使用 AskUserQuestion 请求用户提供本地文件或内联文本
-   - 使用 `lark-doc` skill 获取文档内容
-   - 如果获取失败，使用 AskUserQuestion 请求替代来源
-
-3. **内联文本**（`inline-text`）
+2. **内联文本**（`inline-text`）
    - 直接使用 `.input.md` frontmatter 之后的内容
    - 如果内容过短（少于 100 字符），使用 AskUserQuestion 确认用户是否提供了完整 PRD
 
@@ -68,8 +63,8 @@ feature-name: <功能名称>
 
 ```markdown
 ---
-source-type: <本地文件 | 飞书文档 | 内联文本>
-source-ref: <文件路径或 URL，内联文本标注"内联">
+source-type: <本地文件 | 内联文本>
+source-ref: <文件路径，内联文本标注"内联">
 loaded-at: <加载时间>
 feature-name: <从 .input.md 获取>
 ---
