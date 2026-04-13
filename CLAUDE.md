@@ -1,4 +1,4 @@
-# Newstar - Claude Code 插件集合
+# Newskills - Claude Code 插件集合
 
 本仓库是 Claude Code 插件的 Marketplace，每个插件位于 `plugins/` 下独立目录。
 
@@ -26,3 +26,4 @@
 4. **Skills 必须有 `name` 和 `description`** frontmatter，description 决定自动调用
 5. **Hooks 的 JSON 语法必须正确**
 6. 开发新插件时，使用 `/plugin-dev` skill 获取完整的开发指南和模板
+7. **提交时 Co-Authored-By 统一使用** `Co-Authored-By: GLM 5.1 <noreply@z.ai>`
