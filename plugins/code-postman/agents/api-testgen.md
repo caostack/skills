@@ -79,7 +79,11 @@ tools:
 
 6. **输出接口规格文档**
 
-   将提取结果整理为结构化的接口规格，写入 `postman/api-spec.md`：
+   将提取结果整理为结构化的接口规格。
+
+   **确定输出目录**：根据 API 路径生成目录名，格式为 `postman/{collection-name}/`。`collection-name` 从 API 路径推导（如 `POST /api/users` → `users`，`GET /api/orders/:id` → `orders`）。如果用户指定了名称，优先使用用户指定的名称。所有后续文件都输出到该目录下。
+
+   写入 `postman/{collection-name}/api-spec.md`：
 
    ```markdown
    # API 接口规格: {METHOD} {PATH}
@@ -144,7 +148,7 @@ tools:
 - 前一个请求的响应变量传递给下一个请求
 - 示例：创建 → 获取 → 更新 → 删除
 
-将设计的用例写入 `postman/test-cases.md`：
+将设计的用例写入 `postman/{collection-name}/test-cases.md`：
 
 ```markdown
 # 测试用例: {METHOD} {PATH}
@@ -199,11 +203,11 @@ tools:
 
 4. **生成 Environment 文件**：`baseUrl`、`authToken` 变量
 
-5. **输出文件**：
-   - `postman/collections/{api-name}.postman_collection.json`
-   - `postman/environments/dev.postman_environment.json`
+5. **输出文件**（所有文件都在同一个隔离目录下）：
+   - `postman/{collection-name}/{collection-name}.postman_collection.json`
+   - `postman/{collection-name}/dev.postman_environment.json`
 
-6. **验证 JSON 格式**：运行 `python3 -c "import json; json.load(open('postman/collections/...'))"` 确保合法
+6. **验证 JSON 格式**：运行 `python3 -c "import json; json.load(open('postman/{collection-name}/...'))"` 确保合法
 
 ### Phase 5: 输出总结
 

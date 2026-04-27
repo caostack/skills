@@ -31,11 +31,19 @@ Agent 会自动识别项目框架，分析代码，生成测试集。
 
 ## 输出文件
 
+每次运行生成一个以 API 名称命名的隔离目录，不同 API 的输出互不干扰：
+
 ```
 postman/
-├── collections/
-│   └── {api-name}.postman_collection.json
-└── environments/
+├── users/
+│   ├── api-spec.md
+│   ├── test-cases.md
+│   ├── users.postman_collection.json
+│   └── dev.postman_environment.json
+└── orders/
+    ├── api-spec.md
+    ├── test-cases.md
+    ├── orders.postman_collection.json
     └── dev.postman_environment.json
 ```
 
